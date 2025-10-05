@@ -75,6 +75,30 @@ const login = async (req, res, next) => {
   }
 };
 
+const inviteUser = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    const invite = new UserInvite({
+      email,
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+    });
+    
+    await invite.save();
+
+    const link = `${process.env.FRONTEND_URL}/accept-invite?token=${token}`;
+    // await sendEmail(email, "You're invited!", `Click here to join: ${link}`);
+    console.log("You're invited!", `Click here to join: ${link}`);
+
+    res.json({ success: true, message: "Invite sent successfully!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const acceptInvite = async (req, res) => {
   try {
     const { token, name, password } = req.body;

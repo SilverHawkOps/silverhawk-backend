@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: silverhawk-backend
+    restart: always
+    ports:
+      - "5500:5500"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - mongodb
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # timescaledb:
+  #   image: timescale/timescaledb:latest-pg14
+  #   container_name: timescaledb
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_USER: youruser
+  #     POSTGRES_PASSWORD: yourpassword
+  #     POSTGRES_DB: analytics_db
+  #   restart: always
+  #   volumes:
+  #     - timescaledb_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:6
+    container_name: mongodb
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

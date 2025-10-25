@@ -1,0 +1,35 @@
+name: Deploy Node.js App with Password Auth
+
+on:
+  push:
+    branches:
+      - main  # Change if using a different branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Deploy to Server
+        run: |
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p 2222 ${{ secrets.SSH_USERNAME }}@${{ secrets.SERVER_IP }} << EOF
+            echo "📁 Listing current directory..."
+            ls
+
+            echo "📂 Changing to project directory..."
+            cd applications/silverhawk-backend
+
+            echo "📥 Pulling latest changes..."
+            sudo git pull origin main
+
+            echo "🚀 Restarting PM2 process..."
+            docker compose up --build -d
+
+            echo "✅ Deployment completed."
+          EOF

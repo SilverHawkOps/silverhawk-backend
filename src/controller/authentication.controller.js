@@ -1,8 +1,10 @@
+import { CONFIG } from "../config/config.js";
 import globalErrorHandler from "../middlewares/globalErrorHandler.js";
 import User from "../models/user.model.js";
 import UserInvite from "../models/user_invite.model.js";
 import WebPushSubscription from "../models/web_push_subscriptions.model.js";
 import { generateToken } from "../utils/jwt.js";
+import sendMail from "../utils/mail.js";
 import validate from "../utils/validate.js";
 import authenticationValidations from "../validations/authentication.validations.js";
 import bcrypt from "bcryptjs";
@@ -67,7 +69,12 @@ const login = async (req, res, next) => {
       success: true,
       message: "Login successful",
       data: {
-        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
         token,
       },
     });
@@ -97,8 +104,18 @@ const inviteUser = async (req, res) => {
 
     await invite.save();
 
-    const link = `${process.env.FRONTEND_URL}/accept-invite?token=${token}`;
-    // await sendEmail(email, "You're invited!", `Click here to join: ${link}`);
+    const link = `${CONFIG.FRONTEND_URL}/accept-invite?token=${token}`;
+    // if (CONFIG.NODE_ENV === "production") {
+
+    // }
+    await sendMail({
+      userEmail: email,
+      subject: "SilverHawk APM - Accept Invite",
+      htmlContent: `
+          <p>You are invited!</p>
+          <p>Click on below link to accept ${link} </p>
+        `,
+    });
     console.log("You're invited!", `Click here to join: ${link}`);
 
     res.json({ success: true, message: "Invite sent successfully!" });

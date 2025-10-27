@@ -24,7 +24,12 @@ export const createInfra = async (req, res) => {
       userId: req.user.id,
     });
 
-    res.status(201).json(infra);
+    const encryptedApiKey = infra.apiKey ? encryptShKey(infra.apiKey) : null;
+
+    res.status(201).json({
+      ...infra.toObject(),
+      apiKey: encryptedApiKey,
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

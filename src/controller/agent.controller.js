@@ -29,7 +29,6 @@ export const getAgentData = (req, res) => {
 export const agentHeartbeat = (req, res) => {
   try {
 
-    console.log(req.body);
     // You can implement heartbeat logic here
     res.status(200).json({
       success: true,

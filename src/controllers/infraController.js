@@ -7,7 +7,6 @@ import { encryptShKey } from "../utils/shkeys.js";
 
 export const createInfra = async (req, res) => {
   try {
-    console.log(req.body);
     let apiKey;
     let isUnique = false;
 
@@ -40,19 +39,21 @@ export const listInfra = async (req, res) => {
     const infraList = await Infra.find({ userId: req.user.id }).select(
       "+apiKey"
     );
-    if (infraList.length === 0) return res.json({ message: "No infra found" });
-
-    console.log("Infra list:", infraList);
+    if (infraList.length === 0)
+      return res.status(200).json({ message: "No infra found", infra: [] });
 
     const encryptedInfraList = infraList.map((infra) => {
       const encryptedApiKey = infra.apiKey ? encryptShKey(infra.apiKey) : null;
       return {
         ...infra.toObject(),
-        apiKey: encryptedApiKey, // replace original apiKey with encrypted token
+        apiKey: encryptedApiKey,
       };
     });
 
-    res.json(encryptedInfraList);
+    res.json({
+      message: "Infra fetched successfully",
+      infra: encryptedInfraList,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -62,7 +63,7 @@ export const getInfra = async (req, res) => {
   try {
     const infra = await infraService.getInfra(req.params.id);
     if (!infra) return res.status(404).json({ message: "Infra not found" });
-    res.json(infra);
+    res.status(200).json(infra);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -113,13 +114,11 @@ export const heartbeat = async (req, res) => {
 
 export const saveMetrics = async (req, res) => {
   try {
-    console.log("save metrics", req.user.id, req.apiKey);
     const infra = await Infra.findOne({
       userId: req.user.id,
       apiKey: req.apiKey,
     });
 
-    console.log("infra", infra);
 
     if (!infra) return res.status(404).json({ message: "Infra not found" });
 
@@ -133,8 +132,6 @@ export const saveMetrics = async (req, res) => {
 
     await infra.save();
 
-    console.log("metric", metric);
-
     res.json({ success: true, message: "Metrics saved", metric });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -143,29 +140,30 @@ export const saveMetrics = async (req, res) => {
 
 export const getInfraMetrics = async (req, res) => {
   try {
-    console.log("get metrics", req.user.id, req.params.id);
     const infra = await Infra.findOne({
       userId: req.user.id,
       _id: req.params.id,
-    });
-
-    console.log("infra", infra);
+    }).lean();
 
     if (!infra) return res.status(404).json({ message: "Infra not found" });
 
-    // let metrics = await InfraMetric.find({ infraId: infra._id }).sort({ timestamp: -1 }).limit(100);
-    // find all metrics for the last 24 hours
-    let metrics = await InfraMetric.find({
-      infraId: infra._id,
-      timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    })
-      .sort({ timestamp: 1 })
-      .limit(60);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    console.log(metrics.length);
+    // Get the latest 60 metrics from the last 24 hours (descending), then reverse to chronological order
+    const metrics = await InfraMetric.find({
+      infraId: infra._id,
+      timestamp: { $gte: since },
+    })
+      .sort({ timestamp: -1 }) // newest first
+      .limit(60)
+      .lean();
+
+    // reverse so it's oldest -> newest for plotting
+    metrics.reverse();
 
     res.json({ success: true, message: "Metrics fetched", metrics, infra });
   } catch (err) {
+    console.error("getInfraMetrics error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -173,15 +171,10 @@ export const getInfraMetrics = async (req, res) => {
 
 export const stopInfraAgent = async (req, res) => {
   try {
-
-    console.log(req.user.id)
-    console.log(req.apiKey)
     const infra = await Infra.findOne({
       userId: req.user.id,
       apiKey: req.apiKey,
     });
-
-    console.log("infra", infra)
 
     if (!infra) return res.status(404).json({ message: "Infra not found" });
     infra.lastHeartbeat = new Date();

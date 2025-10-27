@@ -35,8 +35,6 @@ async function authentication(req, res, next) {
 
       const decryptedApiKey = decryptShKey(apiKey);
 
-      console.log({decryptedApiKey})
-
       let userId = decryptedApiKey.split("-")[0];
       const user = await User.findById(userId).select("-password");
 
